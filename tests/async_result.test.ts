@@ -9,11 +9,11 @@ import { None, Some } from "../src/option.ts";
 import { ErrorWithTag, Panic } from "../src/error.ts";
 
 function TestOkPromise<T, E>(value: T) {
-	return new AsyncResult<T, E>(Promise.resolve(Ok<T>(value)));
+	return new AsyncResult<T, E>(Promise.resolve(Ok<T, E>(value)));
 }
 
 function TestErrPromise<T, E>(error: E) {
-	return new AsyncResult<T, E>(Promise.resolve(Err<E>(error)));
+	return new AsyncResult<T, E>(Promise.resolve(Err<E, T>(error)));
 }
 
 function TestOk<T, E>(value: T): Result<T, E> {
@@ -122,14 +122,14 @@ describe("flatten", () => {
 		const inner = TestOk<number, string>(42);
 		const flattened = TestOkPromise<Result<number, string>, boolean>(inner).flatten();
 		expectTypeOf(flattened).toEqualTypeOf<AsyncResult<number, string | boolean>>();
-		await expect(flattened.unwrap()).resolves.toEqual(inner.unwrap());
+		await expect(flattened.unwrap()).resolves.toEqual(inner.unwrapUnchecked());
 	});
 
 	it("works with an Ok<Err> result", async () => {
 		const inner = TestErr<number, string>("error");
 		const flattened = TestOkPromise<Result<number, string>, boolean>(inner).flatten();
 		expectTypeOf(flattened).toEqualTypeOf<AsyncResult<number, string | boolean>>();
-		await expect(flattened.unwrapErr()).resolves.toEqual(inner.unwrapErr());
+		await expect(flattened.unwrapErr()).resolves.toEqual(inner.unwrapErrUnchecked());
 	});
 
 	it("works with an Err result", async () => {
@@ -231,7 +231,7 @@ describe("map", () => {
 		const result = TestErrPromise<number, Error>(error);
 		const result2 = result.map((value) => value * 2);
 		const awaitedResult = await result;
-		await expect(result2.unwrapErr()).resolves.toEqual(awaitedResult.unwrapErr());
+		await expect(result2.unwrapErr()).resolves.toEqual(awaitedResult.unwrapErrUnchecked());
 	});
 });
 
@@ -246,7 +246,7 @@ describe("mapAsync", () => {
 		const a = TestErrPromise<number, string>("error");
 		const b = a.map((value) => value * 2);
 		const awaitedResult = await a;
-		await expect(b.unwrapErr()).resolves.toEqual(awaitedResult.unwrapErr());
+		await expect(b.unwrapErr()).resolves.toEqual(awaitedResult.unwrapErrUnchecked());
 	});
 });
 
@@ -371,10 +371,10 @@ describe("unwrap", () => {
 		await expect(result.unwrap()).resolves.toEqual(42);
 	});
 
-	it("returns undefined for an Err result", async () => {
+	it("returns null for an Err result", async () => {
 		const error = new Error("Test error");
 		const result = TestErrPromise<number, Error>(error);
-		await expect(result.unwrap()).resolves.toEqual(undefined);
+		await expect(result.unwrap()).resolves.toEqual(null);
 	});
 });
 
@@ -385,9 +385,9 @@ describe("unwrapErr", () => {
 		await expect(result.unwrapErr()).resolves.toEqual(error);
 	});
 
-	it("returns undefined for an Ok result", async () => {
+	it("returns null for an Ok result", async () => {
 		const result = TestOkPromise<number, string>(42);
-		await expect(result.unwrapErr()).resolves.toEqual(undefined);
+		await expect(result.unwrapErr()).resolves.toEqual(null);
 	});
 });
 

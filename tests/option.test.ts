@@ -29,7 +29,7 @@ describe("core", () => {
 		expect(option.isSome()).toEqual(false);
 		expect(option.isNone()).toEqual(true);
 		expectTypeOf(option.value).toEqualTypeOf<() => undefined>();
-		expectTypeOf(option.unwrap).toEqualTypeOf<() => undefined>();
+		expectTypeOf(option.unwrap).toEqualTypeOf<() => null>();
 		expectTypeOf(option.expect).toEqualTypeOf<(msg: string) => never>();
 	});
 
@@ -42,13 +42,13 @@ describe("core", () => {
 			expectTypeOf(option.expect).toEqualTypeOf<(msg: string) => number>();
 		} else {
 			expectTypeOf(option.value).toEqualTypeOf<() => undefined>();
-			expectTypeOf(option.unwrap).toEqualTypeOf<() => undefined>();
+			expectTypeOf(option.unwrap).toEqualTypeOf<() => null>();
 			expectTypeOf(option.expect).toEqualTypeOf<(msg: string) => never>();
 		}
 
 		if (option.isNone()) {
 			expectTypeOf(option.value).toEqualTypeOf<() => undefined>();
-			expectTypeOf(option.unwrap).toEqualTypeOf<() => undefined>();
+			expectTypeOf(option.unwrap).toEqualTypeOf<() => null>();
 			expectTypeOf(option.expect).toEqualTypeOf<(msg: string) => never>();
 		} else {
 			expectTypeOf(option.value).toEqualTypeOf<() => number>();
@@ -61,24 +61,24 @@ describe("core", () => {
 describe("okOr", () => {
 	it("returns the value when called on a Some option", () => {
 		const option = TestSome(42);
-		expect(option.okOr("error").unwrap()).toEqual(42);
+		expect(option.okOr("error").unwrapUnchecked()).toEqual(42);
 	});
 
 	it("returns the error value when called on a None option", () => {
 		const option = TestNone<string>();
-		expect(option.okOr("error").unwrapErr()).toEqual("error");
+		expect(option.okOr("error").unwrapErrUnchecked()).toEqual("error");
 	});
 });
 
 describe("okOrElse", () => {
 	it("returns the value when called on a Some option", () => {
 		const option = TestSome(42);
-		expect(option.okOrElse(() => "error").unwrap()).toEqual(42);
+		expect(option.okOrElse(() => "error").unwrapUnchecked()).toEqual(42);
 	});
 
 	it("returns the error value when called on a None option", () => {
 		const option = TestNone<string>();
-		expect(option.okOrElse(() => "error").unwrapErr()).toEqual("error");
+		expect(option.okOrElse(() => "error").unwrapErrUnchecked()).toEqual("error");
 	});
 });
 
@@ -420,9 +420,9 @@ describe("unwrap", () => {
 		expect(option.unwrap()).toEqual(42);
 	});
 
-	it("returns undefined when called on a None option", () => {
+	it("returns null when called on a None option", () => {
 		const option = TestNone<string>();
-		expect(option.unwrap()).toEqual(undefined);
+		expect(option.unwrap()).toEqual(null);
 	});
 });
 

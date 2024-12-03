@@ -4,14 +4,8 @@
  */
 
 import { AsyncOption } from "./async_option.ts";
-import {
-	Err,
-	Ok,
-	type Result,
-	type ResultImpl,
-	type ResultMatch,
-	type ResultMatchAsync,
-} from "./result.ts";
+import type { Err, Result, ResultMatch, ResultMatchAsync } from "./result.ts";
+import type { InferErr, InferOk } from "./util.ts";
 
 /**
  * A promise that resolves to a `Result`.
@@ -27,24 +21,6 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 		promise: Promise<Result<T, E>> | PromiseLike<Result<T, E>> | AsyncResult<T, E>,
 	) {
 		this.promise = promise;
-
-		Object.defineProperty(this, Symbol.iterator, {
-			// Make the iterator non-enumerable to prevent it being used in loops and equality checks
-			enumerable: false,
-			// Make the iterator non-writable to prevent modification
-			writable: false,
-			// Make the iterator non-configurable to prevent redefinition
-			configurable: false,
-		});
-
-		Object.defineProperty(this, Symbol.asyncIterator, {
-			// Make the iterator non-enumerable to prevent it being used in loops and equality checks
-			enumerable: false,
-			// Make the iterator non-writable to prevent modification
-			writable: false,
-			// Make the iterator non-configurable to prevent redefinition
-			configurable: false,
-		});
 	}
 
 	public get [Symbol.toStringTag](): "AsyncResult" {
@@ -371,7 +347,9 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	 * assertEquals(await x.flatten().flatten(), Ok("hello"));
 	 * ```
 	 */
-	public flatten<U, F>(this: AsyncResult<ResultImpl<U, F>, E>): AsyncResult<U, E | F> {
+	public flatten<R extends Result<any, any>>(
+		this: AsyncResult<R, E>,
+	): AsyncResult<InferOk<R>, InferErr<R> | E> {
 		return new AsyncResult(this.then((result) => result.flatten()));
 	}
 
@@ -750,16 +728,16 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	}
 
 	/**
-	 * Returns the contained `Ok` value, if exists, otherwise returns `undefined`.
+	 * Returns the contained `Ok` value, if exists, otherwise returns `null`.
 	 *
-	 * Because this function may return `undefined`, its use is generally discouraged.
+	 * Because this function may return `null`, its use is generally discouraged.
 	 * Instead, prefer to:
 	 * - Use pattern matching with `match()` and handle the `Err` case explicitly
 	 * - Use `unwrapOr()`, `unwrapOrElse()`, or similar methods
 	 *
 	 * Type is narrowed to `T` if the result is already checked to be `Ok`.
 	 *
-	 * @returns The contained value, if exists, otherwise `undefined`.
+	 * @returns The contained value, if exists, otherwise `null`.
 	 *
 	 * @example
 	 * ```typescript
@@ -767,36 +745,36 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	 * assertEquals(await x.unwrap(), 2)
 	 *
 	 * const y = AsyncErr("emergency failure")
-	 * assertEquals(await y.unwrap(), undefined)
+	 * assertEquals(await y.unwrap(), null)
 	 *
 	 * const z = await Result.fromThrowableAsync(...) // AsyncResult<T, E>
 	 * if (z.isOk()) {
 	 *     const a = z.unwrap() // `a` has type `T`
 	 * } else {
-	 *     const b = z.unwrap() // `b` has type `undefined`
+	 *     const b = z.unwrap() // `b` has type `null`
 	 * }
 	 * ```
 	 */
-	public async unwrap(): Promise<T | undefined> {
-		return (await this).unwrap();
+	public async unwrap(): Promise<T | null> {
+		return (await this).unwrapUnchecked();
 	}
 
 	/**
-	 * Returns the contained `Err` value, if exists, otherwise returns `undefined`.
+	 * Returns the contained `Err` value, if exists, otherwise returns `null`.
 	 *
-	 * Because this function may return `undefined`, its use is generally discouraged.
+	 * Because this function may return `null`, its use is generally discouraged.
 	 * Instead, prefer to:
 	 * - Use pattern matching with `match()` and handle the `Ok` case explicitly
 	 * - Use similar methods that handle both cases
 	 *
 	 * Type is narrowed to `E` if the result is already checked to be `Err`.
 	 *
-	 * @returns The contained error value, if exists, otherwise `undefined`.
+	 * @returns The contained error value, if exists, otherwise `null`.
 	 *
 	 * @example
 	 * ```typescript
 	 * const x: AsyncResult<number, string> = AsyncOk(2);
-	 * assertEquals(await x.unwrapErr(), undefined);
+	 * assertEquals(await x.unwrapErr(), null);
 	 *
 	 * const y: AsyncResult<number, string> = AsyncErr("emergency failure");
 	 * assertEquals(await y.unwrapErr(), "emergency failure");
@@ -805,12 +783,12 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	 * if (z.isErr()) {
 	 *     const e = z.unwrapErr() // `e` has type `E`
 	 * } else {
-	 *     const u = z.unwrapErr() // `u` has type `undefined`
+	 *     const u = z.unwrapErr() // `u` has type `null`
 	 * }
 	 * ```
 	 */
-	public async unwrapErr(): Promise<E | undefined> {
-		return (await this).unwrapErr();
+	public async unwrapErr(): Promise<E | null> {
+		return (await this).unwrapErrUnchecked();
 	}
 
 	/**
@@ -892,12 +870,4 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	async error(): Promise<E | undefined> {
 		return (await this).error();
 	}
-}
-
-export function AsyncOk<T>(value: T): AsyncResult<T, never> {
-	return new AsyncResult(Promise.resolve(Ok(value)));
-}
-
-export function AsyncErr<E>(error: E): AsyncResult<never, E> {
-	return new AsyncResult(Promise.resolve(Err(error)));
 }
